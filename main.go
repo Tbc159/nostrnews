@@ -73,8 +73,11 @@ func main() {
 
 	// Only process articles published after program start (use UTC for consistent comparison)
 	// Subtract 5 minutes buffer to catch articles with slightly older timestamps
-	startTime := time.Now().UTC().Add(-5 * time.Minute)
-	log.Printf("Will only process articles published after %s", startTime.Format(time.RFC3339))
+	//startTime := time.Now().UTC().Add(-5 * time.Minute)
+	//log.Printf("Will only process articles published after %s", startTime.Format(time.RFC3339))
+	// Modified dubtract in 2 hours from 5 minutes buffer, to test catching articles with slightly older timestamps
+	startTime := time.Now().UTC().Add(-2 * time.Hour)
+	log.Printf("Verranno elaborati solo gli articoli pubblicati dopo il: %s", startTime.Format(time.RFC3339))
 
 	// Run continuously
 	for {
@@ -115,8 +118,9 @@ func processFeeds(ctx context.Context, cfg *config.Config, fetcher *rss.Fetcher,
 
 			// Skip articles without cover image
 			if article.ImageURL == "" {
-				store.MarkPublished(article.GUID, time.Now().Unix())
-				continue
+			    log.Printf("DEBUG: Articolo scartato (manca immagine): %s", article.Title)
+			    store.MarkPublished(article.GUID, time.Now().Unix())
+			    continue
 			}
 
 			// Skip articles without description

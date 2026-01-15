@@ -67,6 +67,10 @@ A client-side web app that fetches and displays articles from Nostr relays.
 - Static HTML/CSS
 
 ## Deployment
+If you need, you have to install golang-go package
+```bash
+sudo apt-get install -y golang-go
+```
 
 Run the Go program on any server or locally:
 ```bash
