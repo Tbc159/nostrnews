@@ -145,10 +145,10 @@ func processFeeds(ctx context.Context, cfg *config.Config, fetcher *rss.Fetcher,
 				time.Sleep(60 * time.Hour)
 				continue
 			}
-			*/
-
+			
 			// Mark as published
-			store.MarkPublished(article.GUID, time.Now().Unix(), article.Category, "FirstInsert151")
+			store.MarkPublished(article.GUID, time.Now().Unix(), article.Category, "FirstInsert")
+			*/
 
 			// Delay between publications to avoid rate limiting
 			time.Sleep(3 * time.Second)
