@@ -47,10 +47,10 @@ func (s *Store) IsPublished(guid string) bool {
 	return count > 0
 }
 
-func (s *Store) MarkPublished(guid string, timestamp int64) error {
+func (s *Store) MarkPublished(guid string, timestamp int64, category string, status string) error {
 	_, err := s.db.Exec(
-		"INSERT OR REPLACE INTO published (guid, published_at) VALUES (?, ?)",
-		guid, timestamp,
+		"INSERT OR REPLACE INTO published (guid, published_at, category, status) VALUES (?, ?, ?, ?)",
+		guid, timestamp, category, status,
 	)
 	return err
 }
