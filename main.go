@@ -76,7 +76,7 @@ func main() {
 		//startTime := time.Now().UTC().Add(-5 * time.Minute)
 	//log.Printf("Will only process articles published after %s", startTime.Format(time.RFC3339))
 	// Modified dubtract in 2 hours from 5 minutes buffer, to test catching articles with slightly older timestamps
-	startTime := time.Now().UTC().Add(-20 * time.Hour)
+	startTime := time.Now().UTC().Add(-10 * time.Hour)
 	log.Printf("Will only process articles published after %s", startTime.Format(time.RFC3339))
 
 	// Run continuously
@@ -137,9 +137,9 @@ func processFeeds(ctx context.Context, cfg *config.Config, fetcher *rss.Fetcher,
 			// Publish to Nostr
 			if err := publisher.Publish(ctx, article); err != nil {
 				log.Println("Waiting 15 minutes before publishing")
-		    	time.Sleep(15 * time.Minute)
-				log.Println("Starting publishing...")
-				time.Sleep(5 * time.Second)
+		    	time.Sleep(30 * time.Second)
+				log.Println("Starting publishing in next 60s...")
+				time.Sleep(600 * time.Second)
 				continue
 			}
 
