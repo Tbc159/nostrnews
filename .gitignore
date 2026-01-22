@@ -1,3 +1,4 @@
 config/feeds.json
 *.log
 *.db
+nostrnews
