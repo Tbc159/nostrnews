@@ -113,7 +113,8 @@ func processFeeds(ctx context.Context, cfg *config.Config, fetcher *rss.Fetcher,
 
 			// Skip untitled articles
 			if article.Title == "" || article.Title == "Untitled" {
-				store.MarkPublished(article.GUID, time.Now().Unix()) // Mark as processed to skip in future
+				//store.MarkPublished(article.GUID, time.Now().Unix()) // Mark as processed to skip in future
+				store.MarkPublished(article.GUID, time.Now().Unix(), article.category, "FirstInsert")
 				continue
 			}
 
