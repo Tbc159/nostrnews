@@ -138,9 +138,9 @@ func processFeeds(ctx context.Context, cfg *config.Config, fetcher *rss.Fetcher,
 			// Publish to Nostr
 			if err := publisher.Publish(ctx, article); err != nil {
 				log.Printf("Waiting 15 minutes before publishing")
-		    	time.Sleep(30 * time.Second)
+		    	time.Sleep(15 * time.Minute)
 				log.Printf("Starting publishing in next 60s...")
-				time.Sleep(600 * time.Second)
+				time.Sleep(60 * time.Hour)
 				continue
 			}
 
