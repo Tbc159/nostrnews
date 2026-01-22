@@ -127,7 +127,7 @@ func processFeeds(ctx context.Context, cfg *config.Config, fetcher *rss.Fetcher,
 
 			// Skip articles without description
 			if article.Description == "" && article.Content == "" {
-				store.MarkPublished(article.GUID, time.Now().Unix())
+				store.MarkPublished(article.GUID, time.Now().Unix(), article.Category, "FirstInsert151")
 				continue
 			}
 
