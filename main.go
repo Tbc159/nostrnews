@@ -73,11 +73,11 @@ func main() {
 
 	// Only process articles published after program start (use UTC for consistent comparison)
 	// Subtract 5 minutes buffer to catch articles with slightly older timestamps
-	//startTime := time.Now().UTC().Add(-5 * time.Minute)
+		//startTime := time.Now().UTC().Add(-5 * time.Minute)
 	//log.Printf("Will only process articles published after %s", startTime.Format(time.RFC3339))
 	// Modified dubtract in 2 hours from 5 minutes buffer, to test catching articles with slightly older timestamps
 	startTime := time.Now().UTC().Add(-2 * time.Hour)
-	log.Printf("Verranno elaborati solo gli articoli pubblicati dopo il: %s", startTime.Format(time.RFC3339))
+	log.Printf("Will only process articles published after %s", startTime.Format(time.RFC3339))
 
 	// Run continuously
 	for {
@@ -117,11 +117,11 @@ func processFeeds(ctx context.Context, cfg *config.Config, fetcher *rss.Fetcher,
 			}
 
 			// Skip articles without cover image
-			if article.ImageURL == "" {
-			    log.Printf("DEBUG: Articolo scartato (manca immagine): %s", article.Title)
-			    store.MarkPublished(article.GUID, time.Now().Unix())
-			    continue
-			}
+			/*if article.ImageURL == "" {
+			    log.Printf("DEBUG: Skipping article (no cover image): %s", article.Title)
+				store.MarkPublished(article.GUID, time.Now().Unix())
+				continue
+			}*/
 
 			// Skip articles without description
 			if article.Description == "" && article.Content == "" {
@@ -136,6 +136,10 @@ func processFeeds(ctx context.Context, cfg *config.Config, fetcher *rss.Fetcher,
 
 			// Publish to Nostr
 			if err := publisher.Publish(ctx, article); err != nil {
+				log.Println("Waiting 15 minutes before publishing")
+		    	time.Sleep(15 * time.Minute)
+				log.Println("Starting publishing...")
+				time.Sleep(5 * time.Second)
 				continue
 			}
 

@@ -17,10 +17,12 @@ func New(path string) (*Store, error) {
 	}
 
 	_, err = db.Exec(`
-		CREATE TABLE IF NOT EXISTS published (
-			guid TEXT PRIMARY KEY,
-			published_at INTEGER NOT NULL
-		)
+	    CREATE TABLE IF NOT EXISTS published (
+	        guid TEXT PRIMARY KEY,
+	        published_at INTEGER NOT NULL,
+			category TEXT,
+	        status TEXT DEFAULT 'published'
+	    )
 	`)
 	if err != nil {
 		db.Close()
