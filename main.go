@@ -114,7 +114,7 @@ func processFeeds(ctx context.Context, cfg *config.Config, fetcher *rss.Fetcher,
 			// Skip untitled articles
 			if article.Title == "" || article.Title == "Untitled" {
 				//store.MarkPublished(article.GUID, time.Now().Unix()) // Mark as processed to skip in future
-				store.MarkPublished(article.GUID, time.Now().Unix(), article.category, "FirstInsert")
+				store.MarkPublished(article.GUID, time.Now().Unix(), article.Category, "FirstInsert117")
 				continue
 			}
 
@@ -148,7 +148,7 @@ func processFeeds(ctx context.Context, cfg *config.Config, fetcher *rss.Fetcher,
 			*/
 
 			// Mark as published
-			store.MarkPublished(article.GUID, time.Now().Unix())
+			store.MarkPublished(article.GUID, time.Now().Unix(), article.Category, "FirstInsert151")
 
 			// Delay between publications to avoid rate limiting
 			time.Sleep(3 * time.Second)
