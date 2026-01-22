@@ -136,6 +136,7 @@ func processFeeds(ctx context.Context, cfg *config.Config, fetcher *rss.Fetcher,
 			}
 
 			// Publish to Nostr
+			/*
 			if err := publisher.Publish(ctx, article); err != nil {
 				log.Printf("Waiting 15 minutes before publishing")
 		    	time.Sleep(15 * time.Minute)
@@ -143,6 +144,7 @@ func processFeeds(ctx context.Context, cfg *config.Config, fetcher *rss.Fetcher,
 				time.Sleep(60 * time.Hour)
 				continue
 			}
+			*/
 
 			// Mark as published
 			store.MarkPublished(article.GUID, time.Now().Unix())
