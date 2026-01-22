@@ -29,6 +29,7 @@ var defaultRelays = []string{
 	"wss://relay.nostr.band",
 }
 
+
 func main() {
 	// Get private key from environment
 	privateKey := os.Getenv("NOSTR_PRIVATE_KEY")
