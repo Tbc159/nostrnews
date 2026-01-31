@@ -164,6 +164,7 @@ func processFeeds(ctx context.Context, cfg *config.Config, fetcher *rss.Fetcher,
 			}
 
 			// Execution
+			/*
 			if shouldPublish {
 				if err := publisher.Publish(ctx, article); err == nil {
 					newStatus = "published"
@@ -172,7 +173,7 @@ func processFeeds(ctx context.Context, cfg *config.Config, fetcher *rss.Fetcher,
 					log.Printf("❌ Errore pubblicazione: %v", err)
 					newStatus = currentStatus
 				}
-			}
+			}*/
 
 			// Update or save in DB
 			store.MarkPublished(article.GUID, time.Now().Unix(), article.Category, tagString, newStatus)
