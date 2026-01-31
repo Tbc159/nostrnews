@@ -193,7 +193,7 @@ func processFeeds(ctx context.Context, cfg *config.Config, fetcher *rss.Fetcher,
 				article.Title,
 				article.Link,
 				article.Category,
-				strings.Join(article.Tags, ","), 
+				tagString, 
 				newStatus,
 			)
 
