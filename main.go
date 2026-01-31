@@ -105,11 +105,14 @@ func processFeeds(ctx context.Context, cfg *config.Config, fetcher *rss.Fetcher,
 			continue
 		}
 
-		for _, article := range articles {
-			// Skip if already published
-			if store.IsPublished(article.GUID) {
-				continue
-			}
+for _, article := range articles {
+    // 1. Recover previous statment
+    currentStatus, exists := store.GetStatus(article.GUID)
+    
+    // Skip if already published
+    if exists && currentStatus == "published" {
+        continue
+    }
 
 			// Skip untitled articles
 			if article.Title == "" || article.Title == "Untitled" {
@@ -136,22 +139,46 @@ func processFeeds(ctx context.Context, cfg *config.Config, fetcher *rss.Fetcher,
 				continue
 			}
 
-			// Publish to Nostr
-			/*
-			if err := publisher.Publish(ctx, article); err != nil {
-				log.Printf("Waiting 15 minutes before publishing")
-		    	time.Sleep(15 * time.Minute)
-				log.Printf("Starting publishing in next 60s...")
-				time.Sleep(60 * time.Hour)
-				continue
-			}
-			
-			// Mark as published
-			store.MarkPublished(article.GUID, time.Now().Unix(), article.Category, "FirstInsert")
-			*/
+    // Transform tags in string for DB
+    tagString := strings.Join(article.Tags, ",")
+    
+    // check if ready for publish
+    shouldPublish := false
+    newStatus := "draft"
 
-			// Delay between publications to avoid rate limiting
-			time.Sleep(3 * time.Second)
-		}
-	}
+    // Auto Publish if article is reviewed
+    if exists && currentStatus == "reviewed" {
+        shouldPublish = true
+    }
+    
+    // Auto Publish if article was tag with "Bitcoin"
+    isBitcoin := false
+    for _, t := range article.Tags {
+        if strings.EqualFold(t, "Bitcoin") { // Case-insensitive
+            isBitcoin = true
+            break
+        }
+    }
+    if isBitcoin {
+        shouldPublish = true
+    }
+
+    // Execution
+    if shouldPublish {
+        if err := publisher.Publish(ctx, article); err == nil {
+            newStatus = "published"
+            log.Printf("🚀 Pubblicato: %s", article.Title)
+        } else {
+            log.Printf("❌ Errore pubblicazione: %v", err)
+            // Se fallisce, manteniamo lo stato precedente o draft
+            newStatus = currentStatus 
+        }
+    }
+
+    // Update or saving in DB
+    store.MarkPublished(article.GUID, time.Now().Unix(), article.Category, tagString, newStatus)
+
+    if shouldPublish {
+        time.Sleep(60 * time.Second)
+    }
 }

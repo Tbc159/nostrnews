@@ -20,8 +20,9 @@ func New(path string) (*Store, error) {
 	    CREATE TABLE IF NOT EXISTS published (
 	        guid TEXT PRIMARY KEY,
 	        published_at INTEGER NOT NULL,
-			category TEXT,
-	        status TEXT DEFAULT 'published'
+	        category TEXT,
+	        tags TEXT,
+	        status TEXT DEFAULT 'draft'
 	    )
 	`)
 	if err != nil {
@@ -47,10 +48,10 @@ func (s *Store) IsPublished(guid string) bool {
 	return count > 0
 }
 
-func (s *Store) MarkPublished(guid string, timestamp int64, category string, status string) error {
+func (s *Store) MarkPublished(guid string, timestamp int64, category string, tags string, status string) error {
 	_, err := s.db.Exec(
-		"INSERT OR REPLACE INTO published (guid, published_at, category, status) VALUES (?, ?, ?, ?)",
-		guid, timestamp, category, status,
+		"INSERT OR REPLACE INTO published (guid, published_at, category, tags, status) VALUES (?, ?, ?, ?, ?)",
+		guid, timestamp, category, tags, status,
 	)
 	return err
 }
@@ -65,4 +66,12 @@ func (s *Store) Cleanup(olderThan int64) (int64, error) {
 		return 0, err
 	}
 	return result.RowsAffected()
+}
+
+func (s *Store) GetStatus(guid string) (status string, exists bool) {
+	err := s.db.QueryRow("SELECT status FROM published WHERE guid = ?", guid).Scan(&status)
+	if err != nil {
+		return "", false
+	}
+	return status, true
 }
