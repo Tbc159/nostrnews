@@ -162,18 +162,6 @@ func processFeeds(ctx context.Context, cfg *config.Config, fetcher *rss.Fetcher,
 				shouldPublish = true
 			}
 
-			// Auto Publish if article was tag with "Bitcoin"
-			isBitcoin := false
-			for _, t := range article.Tags {
-				if strings.EqualFold(t, "Bitcoin") {
-					isBitcoin = true
-					break
-				}
-			}
-			if isBitcoin {
-				shouldPublish = true
-			}
-
 			// Scommenta questo blocco quando sei pronto a pubblicare davvero
 			/*
 			if shouldPublish {
