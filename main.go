@@ -107,8 +107,19 @@ func processFeeds(ctx context.Context, cfg *config.Config, fetcher *rss.Fetcher,
 		}
 
 		for _, article := range articles {
-    // 1. Recover previous statment
-			currentStatus, exists := store.GetStatus(article.GUID)
+		    // 1. Verifica se il Link è valido. Se il fetcher ha fallito, 
+		    // proviamo a usare il GUID se somiglia a un URL, altrimenti l'articolo è monco.
+		    if article.Link == "" && strings.HasPrefix(article.GUID, "http") {
+		        article.Link = article.GUID
+		    }
+
+		    if article.Link == "" {
+		        log.Printf("⚠️ Article without a valid link link: %s", article.Title)
+		        continue
+		    }
+		
+		    // Recover previous statment
+		    currentStatus, exists := store.GetStatus(article.GUID)
 
 			// Skip if already published
 			if exists && currentStatus == "published" {
@@ -176,7 +187,16 @@ func processFeeds(ctx context.Context, cfg *config.Config, fetcher *rss.Fetcher,
 			}*/
 
 			// Update or save in DB
-			store.MarkPublished(article.GUID, time.Now().Unix(), article.Category, tagString, newStatus)
+			store.MarkPublished(
+		        article.GUID, 
+		        time.Now().Unix(), 
+		        article.Title, 
+		        article.Link, // <--- Parametro fondamentale
+		        article.Category, 
+		        strings.Join(article.Tags, ","), 
+		        newStatus,
+		    )
+		}
 
 			if shouldPublish {
 				time.Sleep(60 * time.Second)

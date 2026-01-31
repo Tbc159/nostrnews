@@ -20,6 +20,8 @@ func New(path string) (*Store, error) {
 	    CREATE TABLE IF NOT EXISTS published (
 	        guid TEXT PRIMARY KEY,
 	        published_at INTEGER NOT NULL,
+	        title TEXT,
+	        link TEXT,
 	        category TEXT,
 	        tags TEXT,
 	        status TEXT DEFAULT 'draft'
@@ -48,12 +50,12 @@ func (s *Store) IsPublished(guid string) bool {
 	return count > 0
 }
 
-func (s *Store) MarkPublished(guid string, timestamp int64, category string, tags string, status string) error {
-	_, err := s.db.Exec(
-		"INSERT OR REPLACE INTO published (guid, published_at, category, tags, status) VALUES (?, ?, ?, ?, ?)",
-		guid, timestamp, category, tags, status,
-	)
-	return err
+func (s *Store) MarkPublished(guid string, ts int64, title string, link string, cat string, tags string, status string) error {
+    _, err := s.db.Exec(
+        "INSERT OR REPLACE INTO published (guid, published_at, title, link, category, tags, status) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        guid, ts, title, link, cat, tags, status,
+    )
+    return err
 }
 
 func (s *Store) Close() error {
