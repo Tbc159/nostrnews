@@ -109,26 +109,26 @@ func processFeeds(ctx context.Context, cfg *config.Config, fetcher *rss.Fetcher,
 		for _, article := range articles {
 		    // 1. Verifica se il Link è valido. Se il fetcher ha fallito, 
 		    // proviamo a usare il GUID se somiglia a un URL, altrimenti l'articolo è monco.
-		    if article.Link == "" && strings.HasPrefix(article.GUID, "http") {
-		        article.Link = article.GUID
-		    }
+			if article.Link == "" && strings.HasPrefix(article.GUID, "http") {
+				article.Link = article.GUID
+			}
 
-		    if article.Link == "" {
-		        log.Printf("⚠️ Article without a valid link link: %s", article.Title)
-		        continue
-		    }
-		
-		    // Recover previous statment
-		    currentStatus, exists := store.GetStatus(article.GUID)
+			if article.Link == "" {
+				log.Printf("⚠️ Article without a valid link: %s", article.Title)
+				continue
+			}
 
-			// Skip if already published
+			// Recover previous statment
+			currentStatus, exists := store.GetStatus(article.GUID)
+
 			if exists && currentStatus == "published" {
 				continue
 			}
 
 			// Skip untitled articles
 			if article.Title == "" || article.Title == "Untitled" {
-				store.MarkPublished(article.GUID, time.Now().Unix(), article.Category, strings.Join(article.Tags, ","), "skipped_no_title")
+				// Nota: assicurati che MarkPublished in store.go accetti ora tutti questi parametri
+				store.MarkPublished(article.GUID, time.Now().Unix(), article.Title, article.Link, article.Category, strings.Join(article.Tags, ","), "skipped_no_title")
 				continue
 			}
 
@@ -141,7 +141,7 @@ func processFeeds(ctx context.Context, cfg *config.Config, fetcher *rss.Fetcher,
 
 			// Skip articles without description
 			if article.Description == "" && article.Content == "" {
-				store.MarkPublished(article.GUID, time.Now().Unix(), article.Category, strings.Join(article.Tags, ","), "skipped_no_content")
+				store.MarkPublished(article.GUID, time.Now().Unix(), article.Title, article.Link, article.Category, strings.Join(article.Tags, ","), "skipped_no_content")
 				continue
 			}
 
@@ -163,7 +163,7 @@ func processFeeds(ctx context.Context, cfg *config.Config, fetcher *rss.Fetcher,
 			}
 
 			// Auto Publish if article was tag with "Bitcoin"
-    		isBitcoin := false
+			isBitcoin := false
 			for _, t := range article.Tags {
 				if strings.EqualFold(t, "Bitcoin") {
 					isBitcoin = true
@@ -174,7 +174,7 @@ func processFeeds(ctx context.Context, cfg *config.Config, fetcher *rss.Fetcher,
 				shouldPublish = true
 			}
 
-			// Execution
+			// Scommenta questo blocco quando sei pronto a pubblicare davvero
 			/*
 			if shouldPublish {
 				if err := publisher.Publish(ctx, article); err == nil {
@@ -188,15 +188,14 @@ func processFeeds(ctx context.Context, cfg *config.Config, fetcher *rss.Fetcher,
 
 			// Update or save in DB
 			store.MarkPublished(
-		        article.GUID, 
-		        time.Now().Unix(), 
-		        article.Title, 
-		        article.Link, // <--- Parametro fondamentale
-		        article.Category, 
-		        strings.Join(article.Tags, ","), 
-		        newStatus,
-		    )
-		}
+				article.GUID,
+				time.Now().Unix(),
+				article.Title,
+				article.Link,
+				article.Category,
+				strings.Join(article.Tags, ","), 
+				newStatus,
+			)
 
 			if shouldPublish {
 				time.Sleep(60 * time.Second)
