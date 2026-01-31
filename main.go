@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+	"string"
 
 	"nostrnews/config"
 	"nostrnews/nostr"
