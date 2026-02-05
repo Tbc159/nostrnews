@@ -216,6 +216,6 @@ func processFeeds(ctx context.Context, cfg *config.Config, fetcher *rss.Fetcher,
 			if shouldPublish {
 				time.Sleep(60 * time.Second)
 			}
-		} // Fine ciclo articoli
-	} // Fine ciclo feed
+		}
+	}
 }
