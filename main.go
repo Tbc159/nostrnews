@@ -88,6 +88,7 @@ func main() {
 			return
 		default:
 			processFeeds(ctx, cfg, fetcher, publisher, publishedStore, startTime)
+			time.Sleep(10 * time.Second)
 		}
 	}
 }
@@ -113,12 +114,15 @@ func processFeeds(ctx context.Context, cfg *config.Config, fetcher *rss.Fetcher,
 			if article.Link == "" {
 				log.Printf("⚠️ Article without a valid link: %s", article.Title)
 				continue
+			}
 
+			// 2. Controllo stato esistente
 			currentStatus, exists := store.GetStatus(article.GUID)
 			if exists && currentStatus == "published" {
 				continue
 			}
 
+			// 3. Preparazione dati per DB
 			tagString := strings.Join(article.Tags, ",")
 			// Skip untitled articles
 			if article.Title == "" || article.Title == "Untitled" {
@@ -150,22 +154,23 @@ func processFeeds(ctx context.Context, cfg *config.Config, fetcher *rss.Fetcher,
 				dbContent = article.Description
 			}
 
-			// 2. Errore: Titolo Mancante (Passiamo tutti i 9 parametri)
+			// 4. Gestione Scarti
 			if article.Title == "" || article.Title == "Untitled" {
 				_ = store.MarkPublished(article.GUID, time.Now().Unix(), "No Title", article.Link, article.Author, dbContent, article.Category, tagString, "skipped_no_title")
 				continue
 			}
 
-			// 3. Errore: Contenuto Mancante
 			if article.Description == "" && article.Content == "" {
 				_ = store.MarkPublished(article.GUID, time.Now().Unix(), article.Title, article.Link, article.Author, "", article.Category, tagString, "skipped_no_content")
 				continue
 			}
 
+			// 5. Filtro temporale
 			if article.Published.UTC().Before(cutoff) {
 				continue
 			}
 
+			// 6. Logica Decisionale
 			shouldPublish := false
 			newStatus := "draft"
 
@@ -180,7 +185,7 @@ func processFeeds(ctx context.Context, cfg *config.Config, fetcher *rss.Fetcher,
 				}
 			}
 
-			// Esecuzione Pubblicazione (Opzionale, se scommentato)
+			// 7. Esecuzione Pubblicazione (Scommenta per attivare)
 			/*
 			if shouldPublish {
 				if err := publisher.Publish(ctx, article); err == nil {
@@ -188,12 +193,11 @@ func processFeeds(ctx context.Context, cfg *config.Config, fetcher *rss.Fetcher,
 					log.Printf("🚀 Pubblicato: %s", article.Title)
 				} else {
 					log.Printf("❌ Errore pubblicazione: %v", err)
-					newStatus = currentStatus
 				}
-			}*/
+			}
+			*/
 
-			// 5. Salvataggio FINALE (9 parametri)
-			// Usiamo _ per ignorare l'errore o gestiamolo con log.Printf
+			// 8. Salvataggio finale
 			err := store.MarkPublished(
 				article.GUID,
 				time.Now().Unix(),
@@ -210,9 +214,8 @@ func processFeeds(ctx context.Context, cfg *config.Config, fetcher *rss.Fetcher,
 			}
 
 			if shouldPublish {
-				// Qui andrebbe la chiamata a publisher.Publish(ctx, article)
 				time.Sleep(60 * time.Second)
 			}
-		}
-	}
+		} // Fine ciclo articoli
+	} // Fine ciclo feed
 }
