@@ -107,20 +107,16 @@ func processFeeds(ctx context.Context, cfg *config.Config, fetcher *rss.Fetcher,
 		}
 
 		for _, article := range articles {
-		    // 1. Verifica se il Link è valido. Se il fetcher ha fallito, 
-		    // proviamo a usare il GUID se somiglia a un URL, altrimenti l'articolo è monco.
+			// 1. Check Link
 			if article.Link == "" && strings.HasPrefix(article.GUID, "http") {
 				article.Link = article.GUID
 			}
-
 			if article.Link == "" {
 				log.Printf("⚠️ Article without a valid link: %s", article.Title)
 				continue
 			}
 
-			// Recover previous statment
 			currentStatus, exists := store.GetStatus(article.GUID)
-
 			if exists && currentStatus == "published" {
 				continue
 			}
@@ -149,20 +145,45 @@ func processFeeds(ctx context.Context, cfg *config.Config, fetcher *rss.Fetcher,
 			if article.Published.UTC().Before(cutoff) {
 				continue
 			}
+			// Prepara il contenuto per il DB
+			dbContent := article.Content
+			if dbContent == "" {
+				dbContent = article.Description
+			}
+			tagString := strings.Join(article.Tags, ",")
 
-			// Transform tags in string for DB
-tagString := strings.Join(article.Tags, ",")
+			// 2. Errore: Titolo Mancante (Passiamo tutti i 9 parametri)
+			if article.Title == "" || article.Title == "Untitled" {
+				_ = store.MarkPublished(article.GUID, time.Now().Unix(), "No Title", article.Link, article.Author, dbContent, article.Category, tagString, "skipped_no_title")
+				continue
+			}
 
-			// check if ready for publish
+			// 3. Errore: Contenuto Mancante
+			if article.Description == "" && article.Content == "" {
+				_ = store.MarkPublished(article.GUID, time.Now().Unix(), article.Title, article.Link, article.Author, "", article.Category, tagString, "skipped_no_content")
+				continue
+			}
+
+			if article.Published.UTC().Before(cutoff) {
+				continue
+			}
+
 			shouldPublish := false
 			newStatus := "draft"
 
-			// Auto Publish if article is reviewed
 			if exists && currentStatus == "reviewed" {
 				shouldPublish = true
 			}
 
-			// Scommenta questo blocco quando sei pronto a pubblicare davvero
+			// Check Bitcoin
+			for _, t := range article.Tags {
+				if strings.EqualFold(t, "Bitcoin") {
+					shouldPublish = true
+					break
+				}
+			}
+
+			// 4. Esecuzione Pubblicazione (Opzionale, se scommentato)
 			/*
 			if shouldPublish {
 				if err := publisher.Publish(ctx, article); err == nil {
@@ -174,23 +195,22 @@ tagString := strings.Join(article.Tags, ",")
 				}
 			}*/
 
-			// Update or save in DB
-			dbContent := article.Content
-			if dbContent == "" {
-			    dbContent = article.Description
-			}
-			
+			// 5. Salvataggio FINALE (9 parametri)
+			// Usiamo _ per ignorare l'errore o gestiamolo con log.Printf
 			err := store.MarkPublished(
-			    article.GUID,
-			    time.Now().Unix(),
-			    article.Title,
-			    article.Link,
-			    article.Author,   // <--- Nuovo parametro
-			    dbContent,        // <--- Nuovo parametro
-			    article.Category,
-			    tagString,
-			    newStatus,
+				article.GUID,
+				time.Now().Unix(),
+				article.Title,
+				article.Link,
+				article.Author,
+				dbContent,
+				article.Category,
+				tagString,
+				newStatus,
 			)
+			if err != nil {
+				log.Printf("Errore salvataggio DB per %s: %v", article.GUID, err)
+			}
 
 			if shouldPublish {
 				time.Sleep(60 * time.Second)
