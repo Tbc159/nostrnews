@@ -102,7 +102,6 @@ func processFeeds(ctx context.Context, cfg *config.Config, fetcher *rss.Fetcher,
 
 		articles, err := fetcher.Fetch(ctx, feed)
 		if err != nil {
-			// Silently skip fetch errors
 			continue
 		}
 
@@ -114,13 +113,13 @@ func processFeeds(ctx context.Context, cfg *config.Config, fetcher *rss.Fetcher,
 			if article.Link == "" {
 				log.Printf("⚠️ Article without a valid link: %s", article.Title)
 				continue
-			}
 
 			currentStatus, exists := store.GetStatus(article.GUID)
 			if exists && currentStatus == "published" {
 				continue
 			}
 
+			tagString := strings.Join(article.Tags, ",")
 			// Skip untitled articles
 			if article.Title == "" || article.Title == "Untitled" {
 				// Nota: assicurati che MarkPublished in store.go accetti ora tutti questi parametri
@@ -150,7 +149,6 @@ func processFeeds(ctx context.Context, cfg *config.Config, fetcher *rss.Fetcher,
 			if dbContent == "" {
 				dbContent = article.Description
 			}
-			tagString := strings.Join(article.Tags, ",")
 
 			// 2. Errore: Titolo Mancante (Passiamo tutti i 9 parametri)
 			if article.Title == "" || article.Title == "Untitled" {
@@ -175,7 +173,6 @@ func processFeeds(ctx context.Context, cfg *config.Config, fetcher *rss.Fetcher,
 				shouldPublish = true
 			}
 
-			// Check Bitcoin
 			for _, t := range article.Tags {
 				if strings.EqualFold(t, "Bitcoin") {
 					shouldPublish = true
@@ -183,7 +180,7 @@ func processFeeds(ctx context.Context, cfg *config.Config, fetcher *rss.Fetcher,
 				}
 			}
 
-			// 4. Esecuzione Pubblicazione (Opzionale, se scommentato)
+			// Esecuzione Pubblicazione (Opzionale, se scommentato)
 			/*
 			if shouldPublish {
 				if err := publisher.Publish(ctx, article); err == nil {
@@ -213,6 +210,7 @@ func processFeeds(ctx context.Context, cfg *config.Config, fetcher *rss.Fetcher,
 			}
 
 			if shouldPublish {
+				// Qui andrebbe la chiamata a publisher.Publish(ctx, article)
 				time.Sleep(60 * time.Second)
 			}
 		}
