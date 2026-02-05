@@ -124,7 +124,7 @@ func processFeeds(ctx context.Context, cfg *config.Config, fetcher *rss.Fetcher,
 			// Skip untitled articles
 			if article.Title == "" || article.Title == "Untitled" {
 				// Nota: assicurati che MarkPublished in store.go accetti ora tutti questi parametri
-				store.MarkPublished(article.GUID, time.Now().Unix(), article.Title, article.Link, article.Category, strings.Join(article.Tags, ","), "skipped_no_title")
+				store.MarkPublished(article.GUID, time.Now().Unix(), article.Title, article.Link, article.Author, "", article.Category, tagString, "skipped_no_title")
 				continue
 			}
 
@@ -137,7 +137,7 @@ func processFeeds(ctx context.Context, cfg *config.Config, fetcher *rss.Fetcher,
 
 			// Skip articles without description
 			if article.Description == "" && article.Content == "" {
-				store.MarkPublished(article.GUID, time.Now().Unix(), article.Title, article.Link, article.Category, strings.Join(article.Tags, ","), "skipped_no_content")
+				store.MarkPublished(article.GUID, time.Now().Unix(), article.Title, article.Link, article.Author, "", article.Category, tagString, "skipped_no_content")
 				continue
 			}
 
