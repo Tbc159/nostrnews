@@ -22,6 +22,8 @@ func New(path string) (*Store, error) {
 	        published_at INTEGER NOT NULL,
 	        title TEXT,
 	        link TEXT,
+	        author TEXT,
+	        content TEXT,
 	        category TEXT,
 	        tags TEXT,
 	        status TEXT DEFAULT 'draft'
@@ -50,12 +52,20 @@ func (s *Store) IsPublished(guid string) bool {
 	return count > 0
 }
 
-func (s *Store) MarkPublished(guid string, ts int64, title string, link string, cat string, tags string, status string) error {
+func (s *Store) MarkPublished(guid string, ts int64, title string, link string, author string, content string, cat string, tags string, status string) error {
     _, err := s.db.Exec(
-        "INSERT OR REPLACE INTO published (guid, published_at, title, link, category, tags, status) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        guid, ts, title, link, cat, tags, status,
+        "INSERT OR REPLACE INTO published (guid, published_at, title, link, author, content, category, tags, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        guid, ts, title, link, author, content, cat, tags, status,
     )
     return err
+}
+
+func (s *Store) GetStatus(guid string) (status string, exists bool) {
+	err := s.db.QueryRow("SELECT status FROM published WHERE guid = ?", guid).Scan(&status)
+	if err != nil {
+		return "", false
+	}
+	return status, true
 }
 
 func (s *Store) Close() error {
@@ -68,12 +78,4 @@ func (s *Store) Cleanup(olderThan int64) (int64, error) {
 		return 0, err
 	}
 	return result.RowsAffected()
-}
-
-func (s *Store) GetStatus(guid string) (status string, exists bool) {
-	err := s.db.QueryRow("SELECT status FROM published WHERE guid = ?", guid).Scan(&status)
-	if err != nil {
-		return "", false
-	}
-	return status, true
 }

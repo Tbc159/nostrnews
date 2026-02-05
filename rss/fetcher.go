@@ -104,6 +104,17 @@ func (f *Fetcher) Fetch(ctx context.Context, feed config.Feed) ([]Article, error
 
 	var articles []Article
 	for _, item := range parsed.Items {
+		
+		// RECUPERO TAG DALL'ARTICOLO: 
+		// Uniamo i tag fissi del feed con le categorie specifiche dell'articolo
+		allTags := feed.Tags
+		for _, cat := range item.Categories {
+			catClean := strings.ToLower(strings.TrimSpace(cat))
+			if catClean != "" {
+				allTags = append(allTags, catClean)
+			}
+		}
+
 		article := Article{
 			GUID:        item.GUID,
 			Title:       cleanText(item.Title),
@@ -115,7 +126,7 @@ func (f *Fetcher) Fetch(ctx context.Context, feed config.Feed) ([]Article, error
 			Language:    feed.Language,
 			Category:    feed.Category,
 			Paywall:     detectPaywall(feed.Paywall, item.Content, item.Description),
-			Tags:        feed.Tags,
+			Tags:        allTags,
 		}
 
 		if article.GUID == "" {

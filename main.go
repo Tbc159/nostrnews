@@ -151,7 +151,7 @@ func processFeeds(ctx context.Context, cfg *config.Config, fetcher *rss.Fetcher,
 			}
 
 			// Transform tags in string for DB
-			tagString := strings.Join(article.Tags, ",")
+tagString := strings.Join(article.Tags, ",")
 
 			// check if ready for publish
 			shouldPublish := false
@@ -175,14 +175,21 @@ func processFeeds(ctx context.Context, cfg *config.Config, fetcher *rss.Fetcher,
 			}*/
 
 			// Update or save in DB
-			store.MarkPublished(
-				article.GUID,
-				time.Now().Unix(),
-				article.Title,
-				article.Link,
-				article.Category,
-				tagString, 
-				newStatus,
+			dbContent := article.Content
+			if dbContent == "" {
+			    dbContent = article.Description
+			}
+			
+			err := store.MarkPublished(
+			    article.GUID,
+			    time.Now().Unix(),
+			    article.Title,
+			    article.Link,
+			    article.Author,   // <--- Nuovo parametro
+			    dbContent,        // <--- Nuovo parametro
+			    article.Category,
+			    tagString,
+			    newStatus,
 			)
 
 			if shouldPublish {
