@@ -60,11 +60,11 @@ def handle_callback(call):
         if action == "apr":
             cursor.execute("UPDATE published SET status = 'reviewed' WHERE id = ?", (db_id,))
             status_display = "✅ **APPROVED**\nThe article will publish on Nostr on next execution."
-            logging.info(f"Approved Article (GUID: {guid})")
+            logging.info(f"Approved Article (ID: {db_id})")
         elif action == "rej":
             cursor.execute("UPDATE published SET status = 'rejected' WHERE id = ?", (db_id,))
             status_display = "❌ **REJECTED**\nThe article will not be published."
-            logging.info(f"ALERT: Article Rejected (GUID: {guid})")
+            logging.info(f"ALERT: Article Rejected (ID: {db_id})")
         else:
             logging.warning(f"Can't manage action: {action}")
             conn.close()
