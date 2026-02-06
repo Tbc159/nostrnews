@@ -48,7 +48,7 @@ def get_db_connection():
 
 @bot.callback_query_handler(func=lambda call: True)
 def handle_callback(call):
-    """Buttons select manager - Updates status in place"""
+    """Buttons select manager"""
     try:
         data = call.data.split("|")
         action = data[0]
@@ -57,27 +57,26 @@ def handle_callback(call):
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        # Definiamo i valori in base all'azione
         if action == "apr":
-            new_status = "reviewed"
-            status_display = "✅ APPROVED"
-            logging.info(f"Processando APPROVAZIONE per ID: {db_id}")
+            cursor.execute("UPDATE published SET status = 'reviewed' WHERE id = ?", (db_id,))
+            status_display = "✅ **APPROVED**\nThe article will publish on Nostr on next execution."
+            logging.info(f"Approved Article (GUID: {guid})")
         elif action == "rej":
-            new_status = "skipped"
-            status_display = "❌ REJECTED"
-            logging.info(f"Processando RIFIUTO per ID: {db_id}")
+            cursor.execute("UPDATE published SET status = 'rejected' WHERE id = ?", (db_id,))
+            status_display = "❌ **REJECTED**\nThe article will not be published."
+            logging.info(f"ALERT: Article Rejected (GUID: {guid})")
         else:
             logging.warning(f"Can't manage action: {action}")
             conn.close()
             return
 
-        # 1. Aggiorna il Database
-        cursor.execute("UPDATE published SET status = ? WHERE id = ?", (new_status, db_id))
         conn.commit()
         
-        # 2. Recupera i dati aggiornati per ricostruire il messaggio
-        cursor.execute("SELECT * FROM published WHERE id = ?", (db_id,))
-        row = cursor.fetchone()
+        cursor.execute("SELECT title FROM published WHERE id = ?", (db_id,))
+        article = cursor.fetchone()
+        title = article['title'] if article else "Unknown"
+        
+        logging.info(f"{status_text}: {title} (ID: {db_id})")
         conn.close()
 
         if row:
@@ -101,8 +100,6 @@ def handle_callback(call):
                 parse_mode='Markdown',
                 reply_markup=None # Rimuove i bottoni
             )
-
-            logging.info(f"Status updated to {new_status} for ID {db_id}")
 
     except Exception as e:
         logging.error(f"Error in callback handler: {e}", exc_info=True)
