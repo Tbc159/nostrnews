@@ -173,16 +173,14 @@ def check_for_new_articles():
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            #cursor.execute("SELECT COUNT(*) as count FROM published WHERE status = 'draft' AND tg_sent = 1")
-            cursor.execute("SELECT COUNT(*) as count FROM published WHERE tg_sent = 0")
+            cursor.execute("SELECT COUNT(*) as count FROM published WHERE status = 'draft' AND tg_sent = 1")
             pending_count = cursor.fetchone()['count']
             
             if pending_count > 0:
                 conn.close()
-                time.sleep(120)
+                time.sleep(30)
                 continue
 
-            #cursor.execute("SELECT * FROM published WHERE status = 'draft' AND tg_sent = 0 ORDER BY published_at ASC LIMIT 1")
             cursor.execute("SELECT * FROM published WHERE tg_sent = 0 ORDER BY published_at ASC LIMIT 1")
             row = cursor.fetchone()
             conn.close()
@@ -213,12 +211,12 @@ def check_for_new_articles():
                 conn_update.execute("UPDATE published SET tg_sent = 1 WHERE id = ?", (db_id,))
                 conn_update.commit()
                 conn_update.close()
-                logging.info(f"Sent article ID {db_id} for review.")
+                logging.info(f"Sent article ID {db_id} for review. System paused until decision.")
 
         except Exception as e:
             logging.error(f"Error in monitoring loop: {e}")
         
-        time.sleep(60)
+        time.sleep(30)
 
 if __name__ == "__main__":
     if not os.path.exists(DB_PATH):
