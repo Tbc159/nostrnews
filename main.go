@@ -178,12 +178,12 @@ func processFeeds(ctx context.Context, cfg *config.Config, fetcher *rss.Fetcher,
 				shouldPublish = true
 			}
 
-			for _, t := range article.Tags {
+			/*for _, t := range article.Tags {
 				if strings.EqualFold(t, "Bitcoin") {
 					shouldPublish = true
 					break
 				}
-			}
+			}*/
 
 			// 7. Esecuzione Pubblicazione (Scommenta per attivare)
 			/*
