@@ -30,7 +30,6 @@ var defaultRelays = []string{
 	"wss://relay.nostr.band",
 }
 
-
 func main() {
 	// Get private key from environment
 	privateKey := os.Getenv("NOSTR_PRIVATE_KEY")
@@ -74,12 +73,9 @@ func main() {
 	}()
 
 	// Only process articles published after program start (use UTC for consistent comparison)
-	// Subtract 5 minutes buffer to catch articles with slightly older timestamps
-		//startTime := time.Now().UTC().Add(-5 * time.Minute)
-	//log.Printf("Will only process articles published after %s", startTime.Format(time.RFC3339))
-	// Modified dubtract in 2 hours from 5 minutes buffer, to test catching articles with slightly older timestamps
+	// Subtract 1 Hour buffer to catch articles with slightly older timestamps
 	startTime := time.Now().UTC().Add(-1 * time.Hour)
-	log.Printf("Will only process articles published after %s", startTime.Format(time.RFC3339))
+	log.Printf("Processing articles published after %s", startTime.Format(time.RFC3339))
 
 	// Run continuously
 	for {
@@ -88,7 +84,8 @@ func main() {
 			return
 		default:
 			processFeeds(ctx, cfg, fetcher, publisher, publishedStore, startTime)
-			time.Sleep(10 * time.Second)
+			log.Println("Cycle completed. Waiting 60 seconds...")
+			time.Sleep(60 * time.Second)
 		}
 	}
 }
@@ -103,6 +100,7 @@ func processFeeds(ctx context.Context, cfg *config.Config, fetcher *rss.Fetcher,
 
 		articles, err := fetcher.Fetch(ctx, feed)
 		if err != nil {
+			log.Printf("Error fetching feed %s: %v", feed.URL, err)
 			continue
 		}
 
@@ -116,105 +114,74 @@ func processFeeds(ctx context.Context, cfg *config.Config, fetcher *rss.Fetcher,
 				continue
 			}
 
-			// 2. Controllo stato esistente
+			// 2. Check if exsist
 			currentStatus, exists := store.GetStatus(article.GUID)
-			if exists && currentStatus == "published" {
+
+			// If exist ignore
+			if exists && (currentStatus == "published" || strings.HasPrefix(currentStatus, "skipped")) {
 				continue
 			}
 
-			// 3. Preparazione dati per DB
 			tagString := strings.Join(article.Tags, ",")
-			// Skip untitled articles
-			if article.Title == "" || article.Title == "Untitled" {
-				// Nota: assicurati che MarkPublished in store.go accetti ora tutti questi parametri
-				store.MarkPublished(article.GUID, time.Now().Unix(), article.Title, article.Link, article.Author, "", article.Category, tagString, "skipped_no_title")
+			if exists && currentStatus == "reviewed" {
+				log.Printf("💎 Article approved found: %s", article.Title)
+				/*if err := publisher.Publish(ctx, article); err == nil {
+					//GUID OR ID?
+					err = store.UpdateStatus(article.GUID, "published")
+					if err != nil {
+						log.Printf("Error updating status to published: %v", err)
+					}
+					log.Printf("🚀 Published on Nostr: %s", article.Title)
+					time.Sleep(5 * time.Second) // Piccola pausa tra invii Nostr
+				} else {
+					log.Printf("❌ Nostr publication error: %v", err)
+				}*/
+				continue // Passa al prossimo articolo
+			}
+
+			// 4. Se l'articolo esiste già ma è ancora 'draft', non fare nulla (evita reinserimenti e log inutili)
+			if exists && currentStatus == "draft" {
 				continue
 			}
 
-			// Skip articles without cover image
-			/*if article.ImageURL == "" {
-			    log.Printf("DEBUG: Skipping article (no cover image): %s", article.Title)
-				store.MarkPublished(article.GUID, time.Now().Unix())
-				continue
-			}*/
-
-			// Skip articles without description
-			if article.Description == "" && article.Content == "" {
-				store.MarkPublished(article.GUID, time.Now().Unix(), article.Title, article.Link, article.Author, "", article.Category, tagString, "skipped_no_content")
-				continue
-			}
-
+			// 5. Gestione Nuovi Articoli (Inserimento solo se !exists)
 			// Skip articles older than cutoff time (compare in UTC)
 			if article.Published.UTC().Before(cutoff) {
 				continue
 			}
-			// Prepara il contenuto per il DB
+
+			// Prepare DB Content
 			dbContent := article.Content
 			if dbContent == "" {
 				dbContent = article.Description
 			}
 
-			// 4. Gestione Scarti
-			if article.Title == "" || article.Title == "Untitled" {
-				_ = store.MarkPublished(article.GUID, time.Now().Unix(), "No Title", article.Link, article.Author, dbContent, article.Category, tagString, "skipped_no_title")
-				continue
-			}
-
-			if article.Description == "" && article.Content == "" {
-				_ = store.MarkPublished(article.GUID, time.Now().Unix(), article.Title, article.Link, article.Author, "", article.Category, tagString, "skipped_no_content")
-				continue
-			}
-
-			// 5. Filtro temporale
-			if article.Published.UTC().Before(cutoff) {
-				continue
-			}
-
-			// 6. Logica Decisionale
-			shouldPublish := false
+			// Filtri di qualità per scartare subito
 			newStatus := "draft"
-
-			if exists && currentStatus == "reviewed" {
-				shouldPublish = true
+			if article.Title == "" || article.Title == "Untitled" {
+				newStatus = "skipped_no_title"
+			} else if article.Description == "" && article.Content == "" {
+				newStatus = "skipped_no_content"
 			}
 
-			/*for _, t := range article.Tags {
-				if strings.EqualFold(t, "Bitcoin") {
-					shouldPublish = true
-					break
+			// Salvataggio (Solo se nuovo)
+			if !exists {
+				err := store.MarkPublished(
+					article.GUID,
+					time.Now().Unix(),
+					article.Title,
+					article.Link,
+					article.Author,
+					dbContent,
+					article.Category,
+					tagString,
+					newStatus,
+				)
+				if err != nil {
+					log.Printf("DB Save error for %s: %v", article.GUID, err)
+				} else if newStatus == "draft" {
+					log.Printf("📥 New draft saved: %s", article.Title)
 				}
-			}*/
-
-			// 7. Esecuzione Pubblicazione (Scommenta per attivare)
-			/*
-			if shouldPublish {
-				if err := publisher.Publish(ctx, article); err == nil {
-					newStatus = "published"
-					log.Printf("🚀 Pubblicato: %s", article.Title)
-				} else {
-					log.Printf("❌ Errore pubblicazione: %v", err)
-				}
-			}
-			*/
-
-			// 8. Salvataggio finale
-			err := store.MarkPublished(
-				article.GUID,
-				time.Now().Unix(),
-				article.Title,
-				article.Link,
-				article.Author,
-				dbContent,
-				article.Category,
-				tagString,
-				newStatus,
-			)
-			if err != nil {
-				log.Printf("Errore salvataggio DB per %s: %v", article.GUID, err)
-			}
-
-			if shouldPublish {
-				time.Sleep(60 * time.Second)
 			}
 		}
 	}

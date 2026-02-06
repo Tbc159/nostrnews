@@ -55,10 +55,20 @@ func (s *Store) IsPublished(guid string) bool {
 }
 
 func (s *Store) MarkPublished(guid string, ts int64, title string, link string, author string, content string, cat string, tags string, status string) error {
-    _, err := s.db.Exec(
-        "INSERT OR REPLACE INTO published (guid, published_at, title, link, author, content, category, tags, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        guid, ts, title, link, author, content, cat, tags, status,
-    )
+    // Usiamo ON CONFLICT DO NOTHING per evitare di sovrascrivere il record se il GUID esiste già.
+    // In questo modo l'ID e lo Status impostato da Python rimarranno invariati.
+    query := `
+        INSERT INTO published (guid, published_at, title, link, author, content, category, tags, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(guid) DO NOTHING
+    `
+    _, err := s.db.Exec(query, guid, ts, title, link, author, content, cat, tags, status)
+    return err
+}
+
+// Aggiungiamo un metodo per aggiornare lo stato a "published" DOPO l'invio a Nostr
+func (s *Store) UpdateStatus(guid string, newStatus string) error {
+    _, err := s.db.Exec("UPDATE published SET status = ? WHERE guid = ?", newStatus, guid)
     return err
 }
 
