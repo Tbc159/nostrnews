@@ -48,7 +48,6 @@ def get_db_connection():
 
 @bot.callback_query_handler(func=lambda call: True)
 def handle_callback(call):
-    """Buttons select manager"""
     try:
         data = call.data.split("|")
         action = data[0]
@@ -59,11 +58,11 @@ def handle_callback(call):
 
         if action == "apr":
             cursor.execute("UPDATE published SET status = 'reviewed' WHERE id = ?", (db_id,))
-            status_display = "✅ **APPROVED**\nThe article will publish on Nostr on next execution."
+            status_text = "✅ **APPROVED**\nThe article will publish on Nostr on next execution."
             logging.info(f"Approved Article (ID: {db_id})")
         elif action == "rej":
-            cursor.execute("UPDATE published SET status = 'rejected' WHERE id = ?", (db_id,))
-            status_display = "❌ **REJECTED**\nThe article will not be published."
+            cursor.execute("UPDATE published SET status = 'skipped' WHERE id = ?", (db_id,))
+            status_text = "❌ **REJECTED**\nThe article will not be published."
             logging.info(f"ALERT: Article Rejected (ID: {db_id})")
         else:
             logging.warning(f"Can't manage action: {action}")
@@ -75,9 +74,8 @@ def handle_callback(call):
         cursor.execute("SELECT title FROM published WHERE id = ?", (db_id,))
         article = cursor.fetchone()
         title = article['title'] if article else "Unknown"
-        
-        logging.info(f"{status_text}: {title} (ID: {db_id})")
         conn.close()
+        logging.info(f"{status_text}: {title} (ID: {db_id})")
 
         if row:
             # 3. Ricostruisci il messaggio originale con il NUOVO Status
@@ -100,9 +98,8 @@ def handle_callback(call):
                 parse_mode='Markdown',
                 reply_markup=None # Rimuove i bottoni
             )
-
     except Exception as e:
-        logging.error(f"Error in callback handler: {e}", exc_info=True)
+        logging.error(f"Error in callback handler: {e}")
 
 def check_for_new_articles():
     logging.info(f"Monitoring DB thread started: {DB_PATH}")
