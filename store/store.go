@@ -18,7 +18,8 @@ func New(path string) (*Store, error) {
 
 	_, err = db.Exec(`
 	    CREATE TABLE IF NOT EXISTS published (
-	        guid TEXT PRIMARY KEY,
+	        id INTEGER PRIMARY KEY AUTOINCREMENT, -- Nuova colonna ID
+	        guid TEXT UNIQUE,                     -- GUID resta per evitare duplicati RSS
 	        published_at INTEGER NOT NULL,
 	        title TEXT,
 	        link TEXT,
@@ -27,7 +28,7 @@ func New(path string) (*Store, error) {
 	        category TEXT,
 	        tags TEXT,
 	        status TEXT DEFAULT 'draft',
-			tg_sent INTEGER DEFAULT 0
+	        tg_sent INTEGER DEFAULT 0
 	    )
 	`)
 	if err != nil {
