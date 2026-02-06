@@ -105,7 +105,6 @@ def handle_callback(call):
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        # 1. Recuperiamo prima i dati dell'articolo
         cursor.execute("SELECT * FROM published WHERE id = ?", (db_id,))
         article = cursor.fetchone()
 
@@ -115,7 +114,7 @@ def handle_callback(call):
             conn.close()
             return
 
-        # 2. Gestione Azioni e definizione dello Status Display
+        # --- ACTION MANAGER---
         if action == "apr":
             cursor.execute("UPDATE published SET status = 'reviewed' WHERE id = ?", (db_id,))
             status_display = "✅ APPROVED (Will be published on Nostr)"
@@ -130,9 +129,10 @@ def handle_callback(call):
                 "✍️ Send new tags comma separated, for this article:",
                 reply_markup=types.ForceReply(selective=True)
             )
-            # Passiamo sia l'ID del DB che l'ID del messaggio originale da aggiornare
             bot.register_next_step_handler(msg, process_tag_update, db_id, call.message.message_id)
             bot.answer_callback_query(call.id)
+            conn.close()
+            return
         else:
             conn.close()
             return
@@ -140,7 +140,7 @@ def handle_callback(call):
         conn.commit()
         conn.close()
 
-        # 3. Ricostruzione messaggio (Usiamo i dati salvati in 'article')
+        # Only for 'apr' o 'rej'
         updated_msg = (
             f"🔔 *ARTICLE MANAGED*\n\n"
             f"📅 *Date:* {article['published_at']}\n"
@@ -148,14 +148,13 @@ def handle_callback(call):
             f"🚦 *Status:* {status_display}"
         )
 
-        # 4. Update del messaggio Telegram
         bot.edit_message_text(
             chat_id=call.message.chat.id,
             message_id=call.message.message_id,
             text=updated_msg,
             parse_mode='Markdown',
             disable_web_page_preview=False,
-            reply_markup=None # Rimuove i bottoni
+            reply_markup=None 
         )
         
         bot.answer_callback_query(call.id, "Action updated!")
