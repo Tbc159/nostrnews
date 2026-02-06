@@ -48,34 +48,51 @@ def get_db_connection():
         raise
 
 def process_tag_update(message, db_id):
+    global is_editing
     new_tags = message.text.strip()
     
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        
-        # Aggiorniamo i tag nel DB
         cursor.execute("UPDATE published SET tags = ? WHERE id = ?", (new_tags, db_id))
         conn.commit()
         
-        # Recuperiamo l'articolo aggiornato per mostrare il feedback
         cursor.execute("SELECT * FROM published WHERE id = ?", (db_id,))
         article = cursor.fetchone()
         conn.close()
 
         if article:
-            feedback = (
-                f"✅ **Tags Updated Successfully!**\n"
+            # 1. Eliminiamo il messaggio "Reply to this..." per pulire la chat
+            try:
+                bot.delete_message(message.chat.id, message.reply_to_message.message_id)
+                bot.delete_message(message.chat.id, message.message_id)
+            except: pass
+
+            # 2. Ricostruiamo il messaggio dell'articolo aggiornato
+            updated_msg = (
+                f"🔔 *ARTICLE UPDATED (ID: {db_id})*\n\n"
                 f"📌 *Title:* {article['title']}\n"
                 f"🏷️ *New Tags:* `{new_tags}`\n\n"
-                "You can still approve or reject the original message above."
+                f"🚦 *Status:* {article['status']}\n"
+                "Ora puoi approvare o rifiutare."
             )
-            bot.reply_to(message, feedback, parse_mode='Markdown')
-            logging.info(f"Updated Tags for ID {db_id}: {new_tags}")
+
+            # Riproponiamo i tasti di approvazione/rifiuto
+            markup = types.InlineKeyboardMarkup()
+            markup.row(
+                types.InlineKeyboardButton("✅ Approve", callback_data=f"apr|{db_id}"),
+                types.InlineKeyboardButton("🗑️ Reject", callback_data=f"rej|{db_id}")
+            )
+            markup.row(types.InlineKeyboardButton("🏷️ Edit Again", callback_data=f"tag|{db_id}"))
+
+            bot.send_message(message.chat.id, updated_msg, parse_mode='Markdown', reply_markup=markup)
             
+        logging.info(f"Updated Tags for ID {db_id}")
+
     except Exception as e:
-        logging.error(f"Error updating tags: {e}")
-        bot.reply_to(message, "❌ Error while updating tags in Database.")
+        logging.error(f"Error: {e}")
+    finally:
+        is_editing = False # Ripartono le scansioni del DB
 
 @bot.callback_query_handler(func=lambda call: True)
 def handle_callback(call):
@@ -110,7 +127,7 @@ def handle_callback(call):
             # Chiediamo all'utente di scrivere i nuovi tag
             msg = bot.send_message(
                 call.message.chat.id, 
-                f"✍️ **Editing Tags for ID {db_id}**\nCurrent Tags:{article['tags']} Reply to this message with the new tags (comma separated):",
+                f"✍️ **Editing Tags for ID {db_id}**\nCurrent Tags: {article['tags']}\n\n Reply to this message with the new tags (comma separated):",
                 reply_markup=types.ForceReply(selective=True),
                 parse_mode='Markdown'
             )
@@ -127,13 +144,9 @@ def handle_callback(call):
 
         # 3. Ricostruzione messaggio (Usiamo i dati salvati in 'article')
         updated_msg = (
-            f"🔔 *ARTICLE PROCESSED*\n\n"
-            f"📂 *Category:* {article['category']}\n"
+            f"🔔 *ARTICLE MANAGED*\n\n"
             f"📅 *Date:* {article['published_at']}\n"
             f"📌 *Title:* {article['title']}\n"
-            f"✍️ *Author:* {article['author'] or 'N/A'}\n"
-            f"🏷️ *Tags:* `{article['tags'] or 'N/A'}`\n\n"
-            f"🔗 [Read Article]({article['link']})\n"
             f"🚦 *Status:* {status_display}"
         )
 
