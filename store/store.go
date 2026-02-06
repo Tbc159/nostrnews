@@ -26,7 +26,8 @@ func New(path string) (*Store, error) {
 	        content TEXT,
 	        category TEXT,
 	        tags TEXT,
-	        status TEXT DEFAULT 'draft'
+	        status TEXT DEFAULT 'draft',
+			tg_sent INTEGER DEFAULT 0
 	    )
 	`)
 	if err != nil {
