@@ -16,9 +16,24 @@ logging.basicConfig(
     ]
 )
 
+CONFIG_FILE = 'chat_id.txt'
 API_TOKEN = 'xxx'
-CHAT_ID = 123456789
 DB_PATH = os.path.expanduser('~/nostrnews/published.db')
+
+def get_target_chat_id():
+    if os.path.exists(CONFIG_FILE):
+        with open(CONFIG_FILE, 'r') as f:
+            return int(f.read().strip())
+    return None
+
+def save_target_chat_id(chat_id):
+    with open(CONFIG_FILE, 'w') as f:
+        f.write(str(chat_id))
+
+@bot.message_handler(commands=['setchat'])
+def set_chat(message):
+    save_target_chat_id(message.chat.id)
+    bot.reply_to(message, f"🎯 Configured Chat! I'll send the news here. (ID: {message.chat.id})")
 
 bot = telebot.TeleBot(API_TOKEN)
 
@@ -69,6 +84,10 @@ def check_for_new_articles():
     """Check and Send periodicaly records in 'draft' status, that aren't still sended to Telegram"""
     logging.info(f"Monitoring DB thread started: {DB_PATH}")
     while True:
+        target_id = get_target_chat_id()
+        if not target_id:
+            time.sleep(10)
+            continue
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
@@ -99,7 +118,7 @@ def check_for_new_articles():
                     types.InlineKeyboardButton("🗑️ Reject", callback_data=f"rej|{db_id}")
                 )
 
-                bot.send_message(CHAT_ID, msg, parse_mode='Markdown', reply_markup=markup)
+                bot.send_message(target_id, msg, parse_mode='Markdown', reply_markup=markup)
                 # Sign like sended
                 cursor.execute("UPDATE published SET tg_sent = 1 WHERE guid = ?", (row['guid'],))
                 conn.commit()
