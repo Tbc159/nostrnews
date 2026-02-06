@@ -19,6 +19,7 @@ logging.basicConfig(
 CONFIG_FILE = 'chat_id.txt'
 API_TOKEN = 'xxx'
 DB_PATH = os.path.expanduser('~/nostrnews/published.db')
+bot = telebot.TeleBot(API_TOKEN)
 
 def get_target_chat_id():
     if os.path.exists(CONFIG_FILE):
@@ -35,7 +36,7 @@ def set_chat(message):
     save_target_chat_id(message.chat.id)
     bot.reply_to(message, f"🎯 Configured Chat! I'll send the news here. (ID: {message.chat.id})")
 
-bot = telebot.TeleBot(API_TOKEN)
+
 
 def get_db_connection():
     try:
