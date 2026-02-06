@@ -59,10 +59,12 @@ def handle_callback(call):
         if action == "apr":
             cursor.execute("UPDATE published SET status = 'reviewed' WHERE id = ?", (db_id,))
             status_text = "✅ **APPROVED**\nThe article will publish on Nostr on next execution."
+            status_display = "✅ **APPROVED**"
             logging.info(f"Approved Article (ID: {db_id})")
         elif action == "rej":
             cursor.execute("UPDATE published SET status = 'skipped' WHERE id = ?", (db_id,))
             status_text = "❌ **REJECTED**\nThe article will not be published."
+            status_display = "❌ **REJECTED**"
             logging.info(f"ALERT: Article Rejected (ID: {db_id})")
         else:
             logging.warning(f"Can't manage action: {action}")
@@ -96,7 +98,7 @@ def handle_callback(call):
                 message_id=call.message.message_id,
                 text=updated_msg,
                 parse_mode='Markdown',
-                reply_markup=None # Rimuove i bottoni
+                reply_markup=None
             )
     except Exception as e:
         logging.error(f"Error in callback handler: {e}")
