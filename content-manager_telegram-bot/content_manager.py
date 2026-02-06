@@ -173,7 +173,8 @@ def check_for_new_articles():
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            cursor.execute("SELECT COUNT(*) as count FROM published WHERE status = 'draft' AND tg_sent = 1")
+            #cursor.execute("SELECT COUNT(*) as count FROM published WHERE status = 'draft' AND tg_sent = 1")
+            cursor.execute("SELECT COUNT(*) as count FROM published WHERE tg_sent = 0")
             pending_count = cursor.fetchone()['count']
             
             if pending_count > 0:
@@ -181,7 +182,8 @@ def check_for_new_articles():
                 time.sleep(120)
                 continue
 
-            cursor.execute("SELECT * FROM published WHERE status = 'draft' AND tg_sent = 0 ORDER BY published_at ASC LIMIT 1")
+            #cursor.execute("SELECT * FROM published WHERE status = 'draft' AND tg_sent = 0 ORDER BY published_at ASC LIMIT 1")
+            cursor.execute("SELECT * FROM published WHERE tg_sent = 0 ORDER BY published_at ASC LIMIT 1")
             row = cursor.fetchone()
             conn.close()
 
