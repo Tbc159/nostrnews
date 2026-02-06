@@ -57,18 +57,25 @@ def handle_callback(call):
         conn = get_db_connection()
         cursor = conn.cursor()
 
+        # Definiamo i valori in base all'azione
         if action == "apr":
             new_status = "reviewed"
             status_display = "✅ APPROVED"
+            logging.info(f"Processando APPROVAZIONE per ID: {db_id}")
         elif action == "rej":
             new_status = "skipped"
             status_display = "❌ REJECTED"
+            logging.info(f"Processando RIFIUTO per ID: {db_id}")
+        else:
+            logging.warning(f"Can't manage action: {action}")
+            conn.close()
+            return
 
         # 1. Aggiorna il Database
         cursor.execute("UPDATE published SET status = ? WHERE id = ?", (new_status, db_id))
         conn.commit()
         
-        # 2. Recupera l'articolo completo per ricostruire il testo
+        # 2. Recupera i dati aggiornati per ricostruire il messaggio
         cursor.execute("SELECT * FROM published WHERE id = ?", (db_id,))
         row = cursor.fetchone()
         conn.close()
@@ -83,7 +90,7 @@ def handle_callback(call):
                 f"✍️ *Author:* {row['author'] or 'N/A'}\n"
                 f"🏷️ *Tags:* `{row['tags'] or 'N/A'}`\n\n"
                 f"🔗 [Read Article]({row['link']})\n"
-                f"🚦 *Status:* {status_display}" # Campo aggiornato
+                f"🚦 *Status:* {status_display}"
             )
 
             # 4. Sovrascrive il messaggio originale (rimuovendo anche i bottoni)
@@ -92,13 +99,13 @@ def handle_callback(call):
                 message_id=call.message.message_id,
                 text=updated_msg,
                 parse_mode='Markdown',
-                reply_markup=None  # Rimuove definitivamente i bottoni
+                reply_markup=None # Rimuove i bottoni
             )
-            
+
             logging.info(f"Status updated to {new_status} for ID {db_id}")
 
     except Exception as e:
-        logging.error(f"Error in callback handler: {e}")
+        logging.error(f"Error in callback handler: {e}", exc_info=True)
 
 def check_for_new_articles():
     logging.info(f"Monitoring DB thread started: {DB_PATH}")
