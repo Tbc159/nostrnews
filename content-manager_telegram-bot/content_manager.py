@@ -48,6 +48,7 @@ def get_db_connection():
 
 @bot.callback_query_handler(func=lambda call: True)
 def handle_callback(call):
+    """Buttons select manager"""
     try:
         data = call.data.split("|")
         action = data[0]
@@ -59,22 +60,26 @@ def handle_callback(call):
         if action == "apr":
             cursor.execute("UPDATE published SET status = 'reviewed' WHERE id = ?", (db_id,))
             status_text = "✅ **APPROVED**\nThe article will publish on Nostr on next execution."
-            logging.info(f"Approved Article (GUID: {guid})")
+            logging.info(f"Article ID {db_id} approved.") 
         elif action == "rej":
             cursor.execute("UPDATE published SET status = 'skipped' WHERE id = ?", (db_id,))
             status_text = "❌ **REJECTED**\nThe article will not be published."
-            logging.info(f"ALERT: Article Rejected (GUID: {guid})")
+            logging.info(f"Article ID {db_id} rejected.")
 
         conn.commit()
         
+        # Get title for confirm
         cursor.execute("SELECT title FROM published WHERE id = ?", (db_id,))
         article = cursor.fetchone()
         title = article['title'] if article else "Unknown"
         conn.close()
-        logging.info(f"{status_text}: {title} (ID: {db_id})")
 
+        # Remove buttons from original message
         bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)
+        
+        # Send action confirmation
         bot.send_message(call.message.chat.id, f"{status_text}\nArticle: {title[:60]}...", parse_mode='Markdown')
+        
     except Exception as e:
         logging.error(f"Error in callback handler: {e}")
 
