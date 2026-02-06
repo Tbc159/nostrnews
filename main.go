@@ -78,7 +78,7 @@ func main() {
 		//startTime := time.Now().UTC().Add(-5 * time.Minute)
 	//log.Printf("Will only process articles published after %s", startTime.Format(time.RFC3339))
 	// Modified dubtract in 2 hours from 5 minutes buffer, to test catching articles with slightly older timestamps
-	startTime := time.Now().UTC().Add(-48 * time.Hour)
+	startTime := time.Now().UTC().Add(-1 * time.Hour)
 	log.Printf("Will only process articles published after %s", startTime.Format(time.RFC3339))
 
 	// Run continuously
