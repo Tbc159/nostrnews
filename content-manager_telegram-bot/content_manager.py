@@ -77,16 +77,16 @@ def handle_callback(call):
         conn.close()
         logging.info(f"{status_text}: {title} (ID: {db_id})")
 
-        if row:
+        if article:
             # 3. Ricostruisci il messaggio originale con il NUOVO Status
             updated_msg = (
                 f"🔔 *ARTICLE PROCESSED*\n\n"
-                f"📂 *Category:* {row['category']}\n"
-                f"📅 *Date:* {row['published_at']}\n"
-                f"📌 *Title:* {row['title']}\n"
-                f"✍️ *Author:* {row['author'] or 'N/A'}\n"
-                f"🏷️ *Tags:* `{row['tags'] or 'N/A'}`\n\n"
-                f"🔗 [Read Article]({row['link']})\n"
+                f"📂 *Category:* {article['category']}\n"
+                f"📅 *Date:* {article['published_at']}\n"
+                f"📌 *Title:* {article['title']}\n"
+                f"✍️ *Author:* {article['author'] or 'N/A'}\n"
+                f"🏷️ *Tags:* `{article['tags'] or 'N/A'}`\n\n"
+                f"🔗 [Read Article]({article['link']})\n"
                 f"🚦 *Status:* {status_display}"
             )
 
