@@ -48,7 +48,7 @@ def get_db_connection():
 
 @bot.callback_query_handler(func=lambda call: True)
 def handle_callback(call):
-    """Buttons select manager"""
+    """Buttons select manager - Updates status in place"""
     try:
         data = call.data.split("|")
         action = data[0]
@@ -58,28 +58,45 @@ def handle_callback(call):
         cursor = conn.cursor()
 
         if action == "apr":
-            cursor.execute("UPDATE published SET status = 'reviewed' WHERE id = ?", (db_id,))
-            status_text = "✅ **APPROVED**\nThe article will publish on Nostr on next execution."
-            logging.info(f"Article ID {db_id} approved.") 
+            new_status = "reviewed"
+            status_display = "✅ APPROVED"
         elif action == "rej":
-            cursor.execute("UPDATE published SET status = 'skipped' WHERE id = ?", (db_id,))
-            status_text = "❌ **REJECTED**\nThe article will not be published."
-            logging.info(f"Article ID {db_id} rejected.")
+            new_status = "skipped"
+            status_display = "❌ REJECTED"
 
+        # 1. Aggiorna il Database
+        cursor.execute("UPDATE published SET status = ? WHERE id = ?", (new_status, db_id))
         conn.commit()
         
-        # Get title for confirm
-        cursor.execute("SELECT title FROM published WHERE id = ?", (db_id,))
-        article = cursor.fetchone()
-        title = article['title'] if article else "Unknown"
+        # 2. Recupera l'articolo completo per ricostruire il testo
+        cursor.execute("SELECT * FROM published WHERE id = ?", (db_id,))
+        row = cursor.fetchone()
         conn.close()
 
-        # Remove buttons from original message
-        bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)
-        
-        # Send action confirmation
-        bot.send_message(call.message.chat.id, f"{status_text}\nArticle: {title[:60]}...", parse_mode='Markdown')
-        
+        if row:
+            # 3. Ricostruisci il messaggio originale con il NUOVO Status
+            updated_msg = (
+                f"🔔 *ARTICLE PROCESSED*\n\n"
+                f"📂 *Category:* {row['category']}\n"
+                f"📅 *Date:* {row['published_at']}\n"
+                f"📌 *Title:* {row['title']}\n"
+                f"✍️ *Author:* {row['author'] or 'N/A'}\n"
+                f"🏷️ *Tags:* `{row['tags'] or 'N/A'}`\n\n"
+                f"🔗 [Read Article]({row['link']})\n"
+                f"🚦 *Status:* {status_display}" # Campo aggiornato
+            )
+
+            # 4. Sovrascrive il messaggio originale (rimuovendo anche i bottoni)
+            bot.edit_message_text(
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                text=updated_msg,
+                parse_mode='Markdown',
+                reply_markup=None  # Rimuove definitivamente i bottoni
+            )
+            
+            logging.info(f"Status updated to {new_status} for ID {db_id}")
+
     except Exception as e:
         logging.error(f"Error in callback handler: {e}")
 
