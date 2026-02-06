@@ -47,6 +47,36 @@ def get_db_connection():
         logging.error(f"Fatal Error in DB connection: {e}")
         raise
 
+def process_tag_update(message, db_id):
+    new_tags = message.text.strip()
+    
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Aggiorniamo i tag nel DB
+        cursor.execute("UPDATE published SET tags = ? WHERE id = ?", (new_tags, db_id))
+        conn.commit()
+        
+        # Recuperiamo l'articolo aggiornato per mostrare il feedback
+        cursor.execute("SELECT * FROM published WHERE id = ?", (db_id,))
+        article = cursor.fetchone()
+        conn.close()
+
+        if article:
+            feedback = (
+                f"✅ **Tags Updated Successfully!**\n"
+                f"📌 *Title:* {article['title']}\n"
+                f"🏷️ *New Tags:* `{new_tags}`\n\n"
+                "You can still approve or reject the original message above."
+            )
+            bot.reply_to(message, feedback, parse_mode='Markdown')
+            logging.info(f"Updated Tags for ID {db_id}: {new_tags}")
+            
+    except Exception as e:
+        logging.error(f"Error updating tags: {e}")
+        bot.reply_to(message, "❌ Error while updating tags in Database.")
+
 @bot.callback_query_handler(func=lambda call: True)
 def handle_callback(call):
     try:
@@ -76,6 +106,18 @@ def handle_callback(call):
             cursor.execute("UPDATE published SET status = 'skipped' WHERE id = ?", (db_id,))
             status_display = "❌ REJECTED (Will not be published)"
             logging.info(f"Rejected Article: {article['title']} (ID: {db_id})")
+        elif action == "tag":
+            # Chiediamo all'utente di scrivere i nuovi tag
+            msg = bot.send_message(
+                call.message.chat.id, 
+                f"✍️ **Editing Tags for ID {db_id}**\nCurrent Tags:{article['tags']} Reply to this message with the new tags (comma separated):",
+                reply_markup=types.ForceReply(selective=True),
+                parse_mode='Markdown'
+            )
+            # Registriamo il prossimo passo passando l'ID del DB
+            bot.register_next_step_handler(msg, process_tag_update, db_id)
+            bot.answer_callback_query(call.id)
+            return
         else:
             conn.close()
             return
@@ -139,9 +181,12 @@ def check_for_new_articles():
                     )
                     
                     markup = types.InlineKeyboardMarkup()
-                    markup.add(
+                    markup.row(
                         types.InlineKeyboardButton("✅ Approve", callback_data=f"apr|{db_id}"),
                         types.InlineKeyboardButton("🗑️ Reject", callback_data=f"rej|{db_id}")
+                    )
+                    markup.row(
+                        types.InlineKeyboardButton("🏷️ Edit Tags", callback_data=f"tag|{db_id}")
                     )
 
                     bot.send_message(target_id, msg, parse_mode='Markdown', reply_markup=markup)
