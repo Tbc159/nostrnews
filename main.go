@@ -25,6 +25,9 @@ var defaultRelays = []string{
 	"wss://relay.primal.net",
 	"wss://relay.snort.social",
 	"wss://nostr-pub.wellorder.net",
+	"wss://nostr-03.dorafactory.org",
+	"wss//relay.primal.net",
+	"wss//relay.johnnyasantos.com",
 }
 
 func main() {
