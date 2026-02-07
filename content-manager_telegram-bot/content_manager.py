@@ -178,7 +178,7 @@ def check_for_new_articles():
             
             if pending_count > 0:
                 conn.close()
-                time.sleep(30)
+                time.sleep(3)
                 continue
 
             cursor.execute("SELECT * FROM published WHERE tg_sent = 0 ORDER BY published_at ASC LIMIT 1")
@@ -216,7 +216,7 @@ def check_for_new_articles():
         except Exception as e:
             logging.error(f"Error in monitoring loop: {e}")
         
-        time.sleep(30)
+        time.sleep(20)
 
 if __name__ == "__main__":
     if not os.path.exists(DB_PATH):
