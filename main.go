@@ -24,10 +24,7 @@ var defaultRelays = []string{
 	"wss://nos.lol",
 	"wss://relay.primal.net",
 	"wss://relay.snort.social",
-	"wss://nostr.land",
 	"wss://nostr-pub.wellorder.net",
-	"wss://offchain.pub",
-	"wss://relay.nostr.band",
 }
 
 func main() {
