@@ -43,6 +43,7 @@ func NewPublisher(privateKeyHex string, relays []string) (*Publisher, error) {
 }
 
 func (p *Publisher) Publish(ctx context.Context, article rss.Article) error {
+	log.Printf("[Nostr] Starting publication for article: %s", article.Title)
 
 	archiveURL := GetArchiveURL(article.Link)
 
@@ -64,34 +65,23 @@ func (p *Publisher) Publish(ctx context.Context, article rss.Article) error {
 		}
 		tags = append(tags, nostr.Tag{"summary", summary})
 	}
-
-	if article.ImageURL != "" {
-		tags = append(tags, nostr.Tag{"image", article.ImageURL})
-	}
-
-	if article.Country != "" {
-		tags = append(tags, nostr.Tag{"country", article.Country})
-	}
-	if article.Language != "" {
-		tags = append(tags, nostr.Tag{"language", article.Language})
-	}
-	if article.Category != "" {
-		tags = append(tags, nostr.Tag{"category", article.Category})
-	}
-	if article.Paywall != "" {
-		tags = append(tags, nostr.Tag{"paywall", article.Paywall})
-	}
-
+	
+	if article.ImageURL != "" { tags = append(tags, nostr.Tag{"image", article.ImageURL}) }
+	
+	if article.Country != "" { tags = append(tags, nostr.Tag{"country", article.Country}) }
+	
+	if article.Language != "" { tags = append(tags, nostr.Tag{"language", article.Language}) }
+	
+	if article.Category != "" { tags = append(tags, nostr.Tag{"category", article.Category}) }
+	
+	if article.Paywall != "" { tags = append(tags, nostr.Tag{"paywall", article.Paywall}) }
+	
 	tags = append(tags, nostr.Tag{"source", article.FeedName})
-
-	if article.Author != "" {
-		tags = append(tags, nostr.Tag{"author", article.Author})
-	}
-
-	for _, t := range article.Tags {
-		tags = append(tags, nostr.Tag{"t", t})
-	}
-
+	
+	if article.Author != "" { tags = append(tags, nostr.Tag{"author", article.Author}) }
+	
+	for _, t := range article.Tags { tags = append(tags, nostr.Tag{"t", t}) }
+	
 	tags = append(tags, nostr.Tag{"archive", archiveURL})
 
 	ev := nostr.Event{
@@ -103,46 +93,56 @@ func (p *Publisher) Publish(ctx context.Context, article rss.Article) error {
 	}
 
 	if err := ev.Sign(p.secretKey); err != nil {
+		log.Printf("[Nostr ERROR] Failed to sign event: %v", err)
 		return fmt.Errorf("failed to sign event: %w", err)
 	}
+	log.Printf("[Nostr] Event signed. ID: %s", ev.ID)
 
 	successCount := 0
+	totalRelays := len(p.relays)
 	for _, relayURL := range p.relays {
-
 		if p.isInCooldown(relayURL) {
+			log.Printf("[Nostr] Skipping relay %s (in cooldown)", relayURL)
 			continue
 		}
 
 		relay, err := p.pool.EnsureRelay(relayURL)
 		if err != nil {
-
+			log.Printf("[Nostr ERROR] Connection failed for %s: %v", relayURL, err)
 			continue
 		}
 
+		log.Printf("[Nostr] Publishing to %s...", relayURL)
 		err = relay.Publish(ctx, ev)
 		if err != nil {
 			errMsg := err.Error()
 
 			if strings.Contains(errMsg, "rate-limited") || strings.Contains(errMsg, "rate limit") {
+				log.Printf("[Nostr WARNING] Rate limit hit on %s. Setting cooldown.", relayURL)
 				p.setCooldown(relayURL)
 				continue
 			}
 
 			if strings.Contains(errMsg, "replaced") {
+				log.Printf("[Nostr INFO] Event replaced on %s (duplicate/update).", relayURL)
 				successCount++
 				continue
 			}
 
+			log.Printf("[Nostr ERROR] Failed to publish to %s: %v", relayURL, err)
 			continue
 		}
+		
+		log.Printf("[Nostr SUCCESS] Accepted by %s", relayURL)
 		successCount++
 	}
 
 	if successCount == 0 {
+		log.Printf("[Nostr CRITICAL] Could not publish '%s' to any of the %d relays", article.Title, totalRelays)
 		return fmt.Errorf("failed to publish to any relay")
 	}
 
-	log.Printf("[%d relays] %s", successCount, article.Title)
+	log.Printf("[Nostr] Publication complete: Successfully sent to %d/%d relays for article: %s", successCount, totalRelays, article.Title)
 	return nil
 }
 
