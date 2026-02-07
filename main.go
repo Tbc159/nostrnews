@@ -74,7 +74,7 @@ func main() {
 
 	// Only process articles published after program start (use UTC for consistent comparison)
 	// Subtract 1 Hour buffer to catch articles with slightly older timestamps
-	startTime := time.Now().UTC().Add(-1 * time.Hour)
+	startTime := time.Now().UTC().Add(-24 * time.Hour)
 	log.Printf("Processing articles published after %s", startTime.Format(time.RFC3339))
 
 	// Run continuously
