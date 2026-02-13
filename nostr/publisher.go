@@ -32,7 +32,7 @@ func NewPublisher(privateKeyHex string, relays []string) (*Publisher, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid private key: %w", err)
 	}
-
+	log.Printf("[Nostr] Starting publication with Key: %s", privateKeyHex)
 	return &Publisher{
 		secretKey:     privateKeyHex,
 		pubKey:        pubKey,
@@ -43,13 +43,12 @@ func NewPublisher(privateKeyHex string, relays []string) (*Publisher, error) {
 }
 
 func (p *Publisher) Publish(ctx context.Context, article rss.Article) error {
-	log.Printf("[Nostr] Starting publication for article: %s", article.Title)
+	log.Printf("[Nostr DEBUG] Starting publication process for: %s", article.Title)
 
 	archiveURL := GetArchiveURL(article.Link)
-
 	content := p.buildContent(article, archiveURL)
-
 	dTag := p.hashGUID(article.GUID)
+	log.Printf("[Nostr DEBUG] Generated d-tag: %s from GUID: %s", dTag, article.GUID)
 
 	tags := nostr.Tags{
 		{"d", dTag},
@@ -84,6 +83,8 @@ func (p *Publisher) Publish(ctx context.Context, article rss.Article) error {
 	
 	tags = append(tags, nostr.Tag{"archive", archiveURL})
 
+	log.Printf("[Nostr DEBUG] Total tags constructed: %d", len(tags))
+
 	ev := nostr.Event{
 		PubKey:    p.pubKey,
 		CreatedAt: nostr.Now(),
@@ -93,16 +94,18 @@ func (p *Publisher) Publish(ctx context.Context, article rss.Article) error {
 	}
 
 	if err := ev.Sign(p.secretKey); err != nil {
-		log.Printf("[Nostr ERROR] Failed to sign event: %v", err)
+		log.Printf("[Nostr ERROR] Signing failed: %v", err)
 		return fmt.Errorf("failed to sign event: %w", err)
 	}
-	log.Printf("[Nostr] Event signed. ID: %s", ev.ID)
+	log.Printf("[Nostr DEBUG] Event Signed Successfully. ID: %s", ev.ID)
+	log.Printf("[Nostr DEBUG] RAW EVENT JSON: %s", ev.String())
 
 	successCount := 0
 	totalRelays := len(p.relays)
 	for _, relayURL := range p.relays {
+		log.Printf("[Nostr DEBUG] Attempting relay: %s", relayURL)
 		if p.isInCooldown(relayURL) {
-			log.Printf("[Nostr] Skipping relay %s (in cooldown)", relayURL)
+			log.Printf("[Nostr DEBUG] Relay %s skipped: currently in cooldown", relayURL)
 			continue
 		}
 
@@ -112,19 +115,22 @@ func (p *Publisher) Publish(ctx context.Context, article rss.Article) error {
 			continue
 		}
 
-		log.Printf("[Nostr] Publishing to %s...", relayURL)
-		err = relay.Publish(ctx, ev)
+		pubCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+		err = relay.Publish(pubCtx, ev)
+		cancel()
+
 		if err != nil {
 			errMsg := err.Error()
+			log.Printf("[Nostr DEBUG] Relay %s returned error: %s", relayURL, errMsg)
 
 			if strings.Contains(errMsg, "rate-limited") || strings.Contains(errMsg, "rate limit") {
-				log.Printf("[Nostr WARNING] Rate limit hit on %s. Setting cooldown.", relayURL)
+				log.Printf("[Nostr WARNING] Rate limit hit on %s", relayURL)
 				p.setCooldown(relayURL)
 				continue
 			}
 
 			if strings.Contains(errMsg, "replaced") {
-				log.Printf("[Nostr INFO] Event replaced on %s (duplicate/update).", relayURL)
+				log.Printf("[Nostr INFO] Event 30023 replaced on %s", relayURL)
 				successCount++
 				continue
 			}
@@ -138,11 +144,11 @@ func (p *Publisher) Publish(ctx context.Context, article rss.Article) error {
 	}
 
 	if successCount == 0 {
-		log.Printf("[Nostr CRITICAL] Could not publish '%s' to any of the %d relays", article.Title, totalRelays)
+		log.Printf("[Nostr CRITICAL] Publication FAILED for '%s'. 0/%d relays accepted it.", article.Title, totalRelays)
 		return fmt.Errorf("failed to publish to any relay")
 	}
 
-	log.Printf("[Nostr] Publication complete: Successfully sent to %d/%d relays for article: %s", successCount, totalRelays, article.Title)
+	log.Printf("[Nostr] Final status: %d/%d relays successful", successCount, totalRelays)
 	return nil
 }
 
