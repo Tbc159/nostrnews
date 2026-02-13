@@ -26,6 +26,8 @@ var defaultRelays = []string{
 	"wss://relay.snort.social",
 	"wss://nostr-pub.wellorder.net",
 	"wss://nostr-03.dorafactory.org",
+	"wss://vitor.nostr1.com",
+	"wss://relay.noswhere.com",
 }
 
 func main() {
