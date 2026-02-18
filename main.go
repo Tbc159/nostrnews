@@ -125,12 +125,12 @@ func processFeeds(ctx context.Context, cfg *config.Config, fetcher *rss.Fetcher,
 			tagString := strings.Join(article.Tags, ",")
 			if exists && currentStatus == "reviewed" {
 			    log.Printf("💎 Article approved found: %s", article.Title)
-			    dbArticle, err := store.GetArticle(article.GUID)
+			    dbArticle, err := store.GetArticle(article.GUID) 
 			    if err == nil && dbArticle.Tags != "" {
 			        article.Tags = strings.Split(dbArticle.Tags, ",")
 			        log.Printf("[DEBUG] Using tags from DB: %v", article.Tags)
 			    }
-			    if err := publisher.Publish(ctx, article); err == nil {
+						    if err := publisher.Publish(ctx, article); err == nil {
 			        err = store.UpdateStatus(article.GUID, "published")
 			        if err != nil {
 			            log.Printf("Error updating status to published: %v", err)

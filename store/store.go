@@ -6,6 +6,11 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
+type DBArticle struct {
+	ID   int
+	Tags string
+}
+
 type Store struct {
 	db *sql.DB
 }
@@ -17,19 +22,19 @@ func New(path string) (*Store, error) {
 	}
 
 	_, err = db.Exec(`
-	    CREATE TABLE IF NOT EXISTS published (
-	        id INTEGER PRIMARY KEY AUTOINCREMENT,
-	        guid TEXT UNIQUE,
-	        published_at INTEGER NOT NULL,
-	        title TEXT,
-	        link TEXT,
-	        author TEXT,
-	        content TEXT,
-	        category TEXT,
-	        tags TEXT,
-	        status TEXT DEFAULT 'draft',
-	        tg_sent INTEGER DEFAULT 0
-	    )
+		CREATE TABLE IF NOT EXISTS published (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			guid TEXT UNIQUE,
+			published_at INTEGER NOT NULL,
+			title TEXT,
+			link TEXT,
+			author TEXT,
+			content TEXT,
+			category TEXT,
+			tags TEXT,
+			status TEXT DEFAULT 'draft',
+			tg_sent INTEGER DEFAULT 0
+		)
 	`)
 	if err != nil {
 		db.Close()
@@ -55,26 +60,26 @@ func (s *Store) IsPublished(guid string) bool {
 }
 
 func (s *Store) MarkPublished(guid string, ts int64, title string, link string, author string, content string, cat string, tags string, status string) error {
-    // Usiamo ON CONFLICT DO NOTHING per evitare di sovrascrivere il record se il GUID esiste già.
-    // In questo modo l'ID e lo Status impostato da Python rimarranno invariati.
-    query := `
-        INSERT INTO published (guid, published_at, title, link, author, content, category, tags, status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(guid) DO NOTHING
-    `
-    _, err := s.db.Exec(query, guid, ts, title, link, author, content, cat, tags, status)
-    return err
+	// Usiamo ON CONFLICT DO NOTHING per evitare di sovrascrivere il record se il GUID esiste già.
+	// In questo modo l'ID e lo Status impostato da Python rimarranno invariati.
+	query := `
+		INSERT INTO published (guid, published_at, title, link, author, content, category, tags, status)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+		ON CONFLICT(guid) DO NOTHING
+	`
+	_, err := s.db.Exec(query, guid, ts, title, link, author, content, cat, tags, status)
+	return err
 }
 
-// Aggiungiamo un metodo per aggiornare lo stato a "published" DOPO l'invio a Nostr
 func (s *Store) UpdateStatus(guid string, newStatus string) error {
-    _, err := s.db.Exec("UPDATE published SET status = ? WHERE guid = ?", newStatus, guid)
-    return err
+	_, err := s.db.Exec("UPDATE published SET status = ? WHERE guid = ?", newStatus, guid)
+	return err
 }
 
-func (s *Store) GetArticle(guid string) error {
-    _, err := s.db.Exec("SELECT tags FROM published WHERE guid = ?", guid)
-    return err
+func (s *Store) GetArticle(guid string) (DBArticle, error) {
+	var a DBArticle
+	err := s.db.QueryRow("SELECT id, tags FROM published WHERE guid = ?", guid).Scan(&a.ID, &a.Tags)
+	return a, err
 }
 
 func (s *Store) GetStatus(guid string) (status string, exists bool) {
