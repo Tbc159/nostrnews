@@ -72,6 +72,11 @@ func (s *Store) UpdateStatus(guid string, newStatus string) error {
     return err
 }
 
+func (s *Store) GetArticle(guid string) error {
+    _, err := s.db.Exec("SELECT tags FROM published WHERE guid = ?", guid)
+    return err
+}
+
 func (s *Store) GetStatus(guid string) (status string, exists bool) {
 	err := s.db.QueryRow("SELECT status FROM published WHERE guid = ?", guid).Scan(&status)
 	if err != nil {

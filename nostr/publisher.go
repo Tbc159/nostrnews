@@ -102,6 +102,13 @@ func (p *Publisher) Publish(ctx context.Context, article rss.Article) error {
 		}
 		tags = append(tags, nostr.Tag{"summary", summary})
 	}
+
+	for _, t := range article.Tags {
+	    trimmedTag := strings.TrimSpace(t)
+	    if trimmedTag != "" {
+	        tags = append(tags, nostr.Tag{"t", trimmedTag})
+	    }
+	}
 	
 	if article.ImageURL != "" { tags = append(tags, nostr.Tag{"image", article.ImageURL}) }
 	
